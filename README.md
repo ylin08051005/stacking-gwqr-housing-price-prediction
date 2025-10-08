@@ -55,8 +55,8 @@ geocode_project/
 2. **Update File Paths in the Script**
 
    ```python
-   data_a = pd.read_csv("put your data path", encoding='utf-8', skiprows=[1])
-   output_file = 'ouput_path'
+   data_a = pd.read_csv("input_path", encoding='utf-8', skiprows=[1])
+   output_file = 'output_path'
    ```
 
 3. **Run the Script**
