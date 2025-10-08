@@ -1,136 +1,122 @@
-# stacking-gwqr-housing-price-prediction
+# Housing Price Prediction using Stacked Ensemble Learning and Geographically Weighted Quantile Regression (GWQR)
 
+## Overview
 
-## Taiwan Real Estate Geocoding and Village Mapping
-
-### Overview
-
-This project aims to convert property transaction addresses from Taiwan’s official **Real Estate Transaction Dataset** into precise **geographic coordinates (latitude and longitude)** and to identify the corresponding **village/subdistrict (村里)** using reverse geocoding.
-The script includes Taiwan-specific validation and retry mechanisms to ensure data accuracy.
+This project aims to analyze **post-pandemic housing price dynamics in Taipei City** by integrating **Stacked Ensemble Learning** and **Geographically Weighted Quantile Regression (GWQR)**.
+The hybrid framework explores the **spatial heterogeneity** and **quantile-dependent patterns** of housing prices, comparing its predictive performance against traditional machine learning models.
 
 ---
 
-### Features
+## Research Background
 
-**Address Normalization** – Cleans and standardizes addresses (removes parentheses and extra text).
-**Coordinate Retrieval (ArcGIS API)** – Automatically converts addresses to latitude and longitude.
-**Village Mapping (Nominatim API)** – Uses OpenStreetMap’s Nominatim service for reverse geocoding.
-**Auto-Retry Mechanism** – Retries failed geocoding or village lookups once.
-**Taiwan Range Validation** – Ensures coordinates fall within Taiwan’s geographic boundaries.
-**Progress and Timing Display** – Reports execution time and processing progress.
-**Output Integration** – Adds new columns (`Latitude`, `Longitude`, `Village`) to the dataset and saves to a CSV file.
+Following the end of Taiwan’s COVID-19 epidemic command on **May 1, 2023**, the real estate market entered a new phase of post-pandemic normalization.
+This study focuses on housing transaction data from **May 2023 to December 2024**, analyzing how various **economic**, **demographic**, **environmental**, and **geographic** factors influence Taipei’s housing market under spatial variation.
 
 ---
 
-### Requirements
+## Methodology
 
-Install the required Python libraries before running:
+### 1.Data Collection and Preprocessing
 
-```bash
-pip install pandas geocoder geopy
+The project integrates multiple open data sources:
+
+* **Real Estate Transaction Data** — Ministry of the Interior’s Actual Price Registration
+* **Socioeconomic Data** — Government Open Data Platform
+* **Meteorological Data** — Central Weather Administration Automatic Weather Stations
+
+Data preprocessing is performed using **Python**, including:
+
+* Address-to-coordinate conversion for spatial analysis (latitude & longitude)
+* Feature extraction (building age, floor area, distance to MRT/commercial centers)
+* Integration of geographic layers for mapping and visualization
+* Outlier removal and data normalization
+
+Two main preprocessing modules are implemented:
+
+**Real Estate Data Converter** — transforms actual price data into structured tabular form.
+**Weather Data Processor** — aggregates hourly weather data into daily/monthly statistics, computes rainfall and temperature indices, and fills temporal gaps.
+
+---
+
+### 2.Variable Selection
+
+To enhance model efficiency and interpretability, multiple variable selection methods are applied:
+
+* **Stepwise regression** and **backward elimination** (traditional statistical approaches)
+* **Recursive Feature Elimination (RFE)** based on Random Forests
+  The most suitable subset of predictors is selected after comparing the performance of different methods.
+
+---
+
+### 3.Stacking Ensemble Framework
+
+#### **Architecture**
+
+The proposed model is a **two-layer stacked ensemble** combining traditional ML and spatial quantile regression:
+
+```
+|-------------------|
+|  Meta Learner     | → GWQR (analyzes spatial & quantile effects)
+|-------------------|
+        ↑
+|-------------------|
+|  Base Learners    | → RF, XGBoost, LightGBM, CNN
+|-------------------|
 ```
 
-**Python version:** 3.8 or above
+#### **First Layer: Base Learners**
+
+Each base learner independently predicts housing prices across four quantiles (τ = 0.25, 0.50, 0.75, 0.90):
+
+1. **Random Forest (RF)** – captures nonlinear relations and feature importance
+2. **XGBoost** – gradient boosting with strong regularization
+3. **LightGBM** – lightweight, high-speed boosting framework
+4. **Convolutional Neural Network (CNN)** – extracts local and nonlinear patterns
+
+Each model undergoes **hyperparameter tuning** using **grid search** or **Bayesian optimization** combined with **K-fold cross-validation**.
+
+#### **Second Layer: Meta Learner (GWQR)**
+
+GWQR (Geographically Weighted Quantile Regression) integrates spatial dependence and quantile-level variation.
+The model estimates local regression coefficients β(u,v) for each geographic location (u,v), enabling the analysis of **price heterogeneity across space** and **different market tiers**.
+
+Mathematically, for quantile τ (0 < τ < 1):
+
+$$
+Y_i = X_i^T \beta_\tau(u_i, v_i) + \varepsilon_i
+$$
+
+where the coefficients vary by location, and weights are assigned via a spatial kernel function ( K(d_{ij}, h) ) based on distance and bandwidth ( h ).
 
 ---
 
-### Project Structure
+### 4.Model Training Process
 
-```
-geocode_project/
-├── geocode_village.py        # Main script (this file)
-├── input/
-│   └── a_lvr_land_a.csv      # Input data (any county/city file)
-└── output/
-    └── a_lvr_land_a_cor.csv  # Processed output file
-```
+1. Split training data into *K* folds for cross-validation
+2. Train base models on the same dataset to produce quantile-specific predictions
+3. Feed base model outputs and spatial coordinates into GWQR
+4. Generate final predictions with quantile-dependent spatial effects
 
 ---
 
-### Usage
+## Evaluation Metrics
 
-1. **Prepare Input Data**
-   Download the real estate transaction CSV file (e.g., `x_lvr_land_a.csv`) from the Ministry of the Interior Open Data platform and place it in the `/input` directory.
+Model performance is assessed through multiple indicators:
 
-2. **Update File Paths in the Script**
+* **RMSE** — Root Mean Square Error
+* **Total Check Loss** — Quantile regression loss measure
+* **Pseudo-R²** — Goodness-of-fit for quantile models
+* **sMAPE** — Symmetric Mean Absolute Percentage Error
+* **Moran’s I** — Spatial autocorrelation measure
 
-   ```python
-   data_a = pd.read_csv("input_path", encoding='utf-8', skiprows=[1])
-   output_file = 'output_path'
-   ```
+Results will be compared among:
 
-3. **Run the Script**
-
-   ```bash
-   python main.py
-   ```
-
-4. **Check the Output**
-   The resulting CSV file will include three additional columns:
-
-   * `Latitude`
-   * `Longitude`
-   * `Village`
+* Single traditional ML models
+* GWR and GWQR alone
+* Proposed Stacking-GWQR hybrid model
 
 ---
 
-###  Column Description
+## Visualization
 
-| Column Name    | Description                                    |
-| -------------- | ---------------------------------------------- |
-| 土地位置建物門牌       | Original transaction address                   |
-| 緯度 (Latitude)  | Latitude obtained via geocoding                |
-| 經度 (Longitude) | Longitude obtained via geocoding               |
-| 村里 (Village)   | Village/subdistrict name via reverse geocoding |
-| 交易標的           | If “土地” (land only), geocoding is skipped      |
-
----
-
-### Notes
-
-1. **API Rate Limits**
-
-   * ArcGIS and Nominatim APIs have rate limits.
-   * The script includes built-in delays: 0.25 seconds for ArcGIS, ~0.9 seconds for Nominatim.
-   * Processing large datasets (>1000 records) may take several hours.
-
-2. **Address Quality Matters**
-
-   * Incomplete or ambiguous addresses (e.g., only township names) may fail to return valid coordinates.
-
-3. **Output Encoding**
-
-   * The output CSV file is saved with `utf-8-sig` encoding to prevent garbled Chinese characters.
-
-4. **Retry Mechanism**
-
-   * The script retries failed coordinate or village lookups once to improve success rates.
-
----
-
-### Sample Output Preview
-
-```text
-=== Result Preview ===
-      交易標的         土地位置建物門牌           緯度          經度     村里
-0   房地(土地+建物)  台中市西屯區文華路100號  24.1782  120.6463  西屯里
-1   房地(土地+建物)  台中市南屯區公益路500號  24.1441  120.6485  向心里
-2   土地           台中市大里區塗城路80號   None      None     None
-...
-```
-
----
-
-### Future Improvements
-
-* Support for **multithreaded processing** to speed up geocoding.
-* Add **Google Maps API** as a backup geocoding source.
-* Implement **detailed logging** for failed cases and retries.
-* Provide **visual map output** using `folium`.
-
----
-
-###  Author
-
-**Author:** Yi-hsuan Lin (林沂萱)
-**Last Updated:** October 2025
+Spatial distributions of predicted prices across quantiles (25%, 50%, 75%, 90%) are visualized using **ArcGIS** or **QGIS**, highlighting spatial disparities and local market patterns in Taipei City.
