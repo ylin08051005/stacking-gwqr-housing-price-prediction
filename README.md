@@ -20,7 +20,7 @@ This study focuses on housing transaction data from **May 2023 to December 2024*
 
 The project integrates multiple open data sources:
 
-* **Real Estate Transaction Data — Real Estate Actual Transaction Information Platform (https://plvr.land.moi.gov.tw/Index
+* **Real Estate Transaction Data** — Real Estate Actual Transaction Information Platform (https://plvr.land.moi.gov.tw/Index
 )
 * **Socioeconomic Data** — Government Open Data Platform
 * **Meteorological Data** — Central Weather Administration Automatic Weather Stations
